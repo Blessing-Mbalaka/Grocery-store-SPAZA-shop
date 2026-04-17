@@ -1,0 +1,366 @@
+================================================================================
+GROCERY STORE SPAZA SHOP - ALL SOURCE CODE
+================================================================================
+Project: Grocery Store Management System
+Target: .NET 10
+Language: C# 14.0
+
+================================================================================
+FILE: Program.cs
+================================================================================
+
+using System;
+
+class Program
+{
+    static GroceryStore store = new GroceryStore();
+
+    static void Main(string[] args)
+    {
+        Console.WriteLine("SPAZA DELUX");
+        Console.WriteLine("==========");
+
+        // Load all grocery items into the arrays
+        store.LoadDefaultItems();
+
+        bool running = true;
+
+        while (running)
+        {
+            ShowMenu();
+            string choice = Console.ReadLine().Trim();
+
+            switch (choice)
+            {
+                case "1":
+                    store.DisplayItems();
+                    break;
+
+                case "2":
+                    BuyGroceries();
+                    break;
+
+                case "3":
+                    store.DisplayCart();
+                    break;
+
+                case "4":
+                    store.Checkout();
+                    break;
+
+                case "5":
+                    running = false;
+                    Console.WriteLine("\n  Goodbye! 👋\n");
+                    break;
+
+                default:
+                    Console.WriteLine("  ✘  Invalid option. Please choose 1-5.\n");
+                    break;
+            }
+        }
+    }
+
+    static void ShowMenu()
+    {
+        Console.WriteLine("\nMAIN MENU");
+        Console.WriteLine("=========");
+        Console.WriteLine("1. View all groceries");
+        Console.WriteLine("2. Buy groceries");
+        Console.WriteLine("3. View my cart");
+        Console.WriteLine("4. Checkout");
+        Console.WriteLine("5. Exit");
+        Console.Write("Enter choice: ");
+    }
+
+    // Handle the buying process
+    static void BuyGroceries()
+    {
+        store.DisplayItems();
+        bool shopping = true;
+
+        while (shopping)
+        {
+            Console.Write("Enter item name to buy (or 'done' to stop): ");
+            string name = Console.ReadLine()?.Trim();
+
+            if (name.Equals("done", StringComparison.OrdinalIgnoreCase))
+            {
+                shopping = false;
+                break;
+            }
+
+            if (!store.ItemExists(name))
+            {
+                Console.WriteLine($"'{name}' not found. Please check the name and try again.\n");
+                continue;
+            }
+
+            Console.Write($"How many '{name}' would you like? ");
+            string qtyInput = Console.ReadLine()?.Trim();
+
+            if (int.TryParse(qtyInput, out int qty) && qty > 0)
+            {
+                store.AddToCart(name, qty);
+            }
+            else
+            {
+                Console.WriteLine("Invalid quantity. Please enter a positive whole number.\n");
+            }
+
+            Console.WriteLine();
+        }
+    }
+}
+
+
+================================================================================
+FILE: GItems.cs (Abstract Class)
+================================================================================
+
+using System;
+
+abstract class GItems
+{
+    protected string[] itemNames = new string[20];
+    protected double[] itemPrices = new double[20];
+    protected int itemCount = 0;
+
+    public void AddItem(string name, double price)
+    {
+        if (itemCount < 20)
+        {
+            itemNames[itemCount] = name;
+            itemPrices[itemCount] = price;
+            itemCount++;
+            Console.WriteLine($"'{name}' added at R{price:F2}");
+        }
+        else
+        {
+            Console.WriteLine("Storage full – cannot add more items.");
+        }
+    }
+
+    public void DisplayItems()
+    {
+        Console.WriteLine("\nAVAILABLE GROCERIES");
+        Console.WriteLine("===================");
+
+        if (itemCount == 0)
+        {
+            Console.WriteLine("No items available.");
+        }
+        else
+        {
+            for (int i = 0; i < itemCount; i++)
+            {
+                Console.WriteLine($"{i + 1,2}. {itemNames[i],-20} R{itemPrices[i],8:F2}");
+            }
+        }
+
+        Console.WriteLine();
+    }
+
+    public double FindPrice(string name)
+    {
+        for (int i = 0; i < itemCount; i++)
+        {
+            if (itemNames[i].Equals(name, StringComparison.OrdinalIgnoreCase))
+            {
+                return itemPrices[i];
+            }
+        }
+        return -1;
+    }
+
+    public bool ItemExists(string name)
+    {
+        return FindPrice(name) != -1;
+    }
+
+    public abstract void LoadDefaultItems();
+}
+
+
+================================================================================
+FILE: CPurchase.cs (Abstract Class)
+================================================================================
+
+using System;
+
+abstract class CPurchase : GItems
+{
+    protected string[] cartNames = new string[50];
+    protected int[] cartQty = new int[50];
+    protected double[] cartSubtotals = new double[50];
+    protected int cartCount = 0;
+
+    public void AddToCart(string name, int qty)
+    {
+        double price = FindPrice(name);
+
+        if (price == -1)
+        {
+            Console.WriteLine($"'{name}' was not found in the grocery list.");
+            return;
+        }
+
+        for (int i = 0; i < cartCount; i++)
+        {
+            if (cartNames[i].Equals(name, StringComparison.OrdinalIgnoreCase))
+            {
+                cartQty[i] += qty;
+                cartSubtotals[i] = cartQty[i] * price;
+                Console.WriteLine($"Updated '{name}' — qty now {cartQty[i]}");
+                return;
+            }
+        }
+
+        if (cartCount < 50)
+        {
+            cartNames[cartCount] = name;
+            cartQty[cartCount] = qty;
+            cartSubtotals[cartCount] = qty * price;
+            cartCount++;
+            Console.WriteLine($"Added {qty}x '{name}' to cart  (R{price} each)");
+        }
+        else
+        {
+            Console.WriteLine("Cart is full.");
+        }
+    }
+
+    public double CalculateTotal()
+    {
+        double total = 0;
+        for (int i = 0; i < cartCount; i++)
+        {
+            total += cartSubtotals[i];
+        }
+        return total;
+    }
+
+    public void DisplayCart()
+    {
+        Console.WriteLine("\nYOUR CART");
+        Console.WriteLine("=========");
+
+        if (cartCount == 0)
+        {
+            Console.WriteLine("Cart is empty.");
+        }
+        else
+        {
+            for (int i = 0; i < cartCount; i++)
+            {
+                Console.WriteLine($"{cartNames[i],-20} x{cartQty[i],-4}  R{cartSubtotals[i],8}");
+            }
+        }
+
+        Console.WriteLine();
+    }
+
+    public abstract void Checkout();
+}
+
+
+================================================================================
+FILE: Discount.cs (Sealed Class)
+================================================================================
+
+using System;
+
+sealed class Discount
+{
+    private const double DISCOUNT_THRESHOLD = 10000.00;
+    private const double DISCOUNT_RATE = 0.10;
+
+    public double GetDiscount(double total)
+    {
+        if (total > DISCOUNT_THRESHOLD)
+        {
+            return total * DISCOUNT_RATE;
+        }
+        return 0;
+    }
+
+    public void PrintDiscountInfo(double total)
+    {
+        double discountAmount = GetDiscount(total);
+
+        if (discountAmount > 0)
+        {
+            Console.WriteLine($"\nGreat news! You qualify for a {DISCOUNT_RATE * 100:F0}% discount!");
+            Console.WriteLine($"Discount applied : -R{discountAmount:F2}");
+        }
+        else
+        {
+            double remaining = DISCOUNT_THRESHOLD - total;
+            Console.WriteLine($"\nSpend R{remaining:F2} more to get a 10% discount!");
+        }
+    }
+}
+
+
+================================================================================
+FILE: GroceryStore.cs (Concrete Class)
+================================================================================
+
+using System;
+
+class GroceryStore : CPurchase
+{
+    private Discount discountHelper = new Discount();
+
+    public override void LoadDefaultItems()
+    {
+        AddItem("Milk (2L)", 45.99);
+        AddItem("Bread", 22.50);
+        AddItem("Eggs (12)", 59.99);
+        AddItem("Butter (500g)", 89.99);
+        AddItem("Sugar (2kg)", 49.99);
+        AddItem("Rice (5kg)", 119.99);
+        AddItem("Chicken Breast", 189.99);
+        AddItem("Beef Mince (1kg)", 159.99);
+        AddItem("Apples (1kg)", 39.99);
+        AddItem("Cheese (400g)", 109.99);
+        AddItem("Yoghurt (1L)", 59.99);
+        AddItem("Orange Juice", 49.99);
+        AddItem("Pasta (500g)", 29.99);
+        AddItem("Tomato Sauce", 34.99);
+        AddItem("Cooking Oil (2L)", 89.99);
+    }
+
+    public override void Checkout()
+    {
+        DisplayCart();
+
+        if (cartCount == 0)
+        {
+            Console.WriteLine("Your cart is empty. Nothing to checkout.\n");
+            return;
+        }
+
+        double rawTotal = CalculateTotal();
+        double discountAmt = discountHelper.GetDiscount(rawTotal);
+        double finalTotal = rawTotal - discountAmt;
+
+        Console.WriteLine("==================================================");
+        Console.WriteLine($"Subtotal          :  R{rawTotal,10:F2}");
+
+        discountHelper.PrintDiscountInfo(rawTotal);
+
+        if (discountAmt > 0)
+        {
+            Console.WriteLine($"Final Total       :  R{finalTotal,10:F2}");
+        }
+        else
+        {
+            Console.WriteLine($"Total             :  R{rawTotal,10:F2}");
+        }
+
+        Console.WriteLine("==================================================");
+        Console.WriteLine("\nThank you for shopping with us!\n");
+    }
+}
+
+
